@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from './services/supabase';
 import { Layout } from './components/Layout';
@@ -7,6 +6,7 @@ import { Projects } from './pages/Projects';
 import { Tasks } from './pages/Tasks';
 import { TimeTracking } from './pages/TimeTracking';
 import { Users } from './pages/Users';
+import { Companies } from './pages/Companies';
 import { Auth } from './pages/Auth';
 import { Card } from './components/UI';
 
@@ -64,11 +64,7 @@ const App: React.FC = () => {
       case 'registro_horas':
         return <TimeTracking currentUserId={session.user.id} />;
       case 'empresas':
-        return (
-            <Card title="Gestión de Empresas">
-                <div className="text-center py-10 text-gray-500">Módulo de Empresas / Clientes</div>
-            </Card>
-        );
+        return <Companies />;
       case 'usuarios':
         return <Users />;
       default:

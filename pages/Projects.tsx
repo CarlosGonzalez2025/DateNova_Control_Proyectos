@@ -1,8 +1,9 @@
+
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { Proyecto, Empresa } from '../types';
 import { Button, Input, Select, Modal, Card, Badge } from '../components/UI';
-import { Plus, Edit2, Trash2, Calendar } from 'lucide-react';
+import { Plus, Edit2, Trash2, Calendar, Filter } from 'lucide-react';
 
 export const Projects: React.FC = () => {
   const [projects, setProjects] = useState<Proyecto[]>([]);
@@ -10,6 +11,9 @@ export const Projects: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Proyecto | null>(null);
+  
+  // Filter State
+  const [filterStatus, setFilterStatus] = useState('');
   
   // Form State
   const [formData, setFormData] = useState({
@@ -83,20 +87,45 @@ export const Projects: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  // Filter Logic
+  const filteredProjects = projects.filter(proj => {
+    if (!filterStatus) return true;
+    return proj.estado === filterStatus;
+  });
+
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold text-gray-800">Gestión de Proyectos</h2>
-        <Button onClick={() => openModal()}>
-          <Plus size={18} className="mr-2" /> Nuevo Proyecto
-        </Button>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+           <h2 className="text-xl font-semibold text-gray-800">Gestión de Proyectos</h2>
+           <p className="text-sm text-gray-500">Administra y monitorea el progreso de tus contratos.</p>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-stretch sm:items-center">
+            <div className="w-full sm:w-48">
+              <Select 
+                options={[
+                  { value: '', label: 'Todos los estados' },
+                  { value: 'pendiente', label: 'Pendiente' },
+                  { value: 'en_progreso', label: 'En Progreso' },
+                  { value: 'pausado', label: 'Pausado' },
+                  { value: 'completado', label: 'Completado' },
+                ]}
+                value={filterStatus}
+                onChange={e => setFilterStatus(e.target.value)}
+              />
+            </div>
+            <Button onClick={() => openModal()} className="whitespace-nowrap">
+                <Plus size={18} className="mr-2" /> Nuevo Proyecto
+            </Button>
+        </div>
       </div>
 
       {loading && !isModalOpen ? (
          <div className="flex justify-center p-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div></div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projects.map((proj) => (
+          {filteredProjects.map((proj) => (
             <Card key={proj.id} className="hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start mb-4">
                 <div>
@@ -139,9 +168,20 @@ export const Projects: React.FC = () => {
             </Card>
           ))}
           
-          {projects.length === 0 && (
+          {filteredProjects.length === 0 && (
             <div className="col-span-full text-center py-12 bg-white rounded-lg border border-dashed border-gray-300">
-               <p className="text-gray-500">No hay proyectos creados.</p>
+               <div className="flex justify-center mb-2">
+                 <Filter className="text-gray-300 h-10 w-10" />
+               </div>
+               <p className="text-gray-500">No se encontraron proyectos con este criterio.</p>
+               {filterStatus && (
+                 <button 
+                   onClick={() => setFilterStatus('')}
+                   className="text-sm text-primary-600 hover:text-primary-800 mt-2 font-medium"
+                 >
+                   Limpiar filtros
+                 </button>
+               )}
             </div>
           )}
         </div>

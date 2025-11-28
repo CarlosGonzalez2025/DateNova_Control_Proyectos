@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { Proyecto, Tarea, Usuario } from '../types';
-import { Button, Input, Select, Modal, Card, Badge } from '../components/UI';
-import { Plus, Edit2, Trash2, Clock, UserCheck, Search } from 'lucide-react';
+import { Button, Input, Select, Modal, Card, Badge, ProgressBar } from '../components/UI';
+import { Plus, Edit2, Trash2, Clock, UserCheck, Search, X } from 'lucide-react';
 
 export const Tasks: React.FC = () => {
   const [tasks, setTasks] = useState<Tarea[]>([]);
@@ -149,11 +149,19 @@ export const Tasks: React.FC = () => {
             </div>
             <input
               type="text"
-              className="pl-9 block w-full border rounded-md px-3 py-2 text-sm border-gray-300 focus:ring-primary-500 focus:border-primary-500 outline-none"
-              placeholder="Buscar por nombre o descripción..."
+              className="pl-9 pr-8 block w-full border rounded-md px-3 py-2 text-sm border-gray-300 focus:ring-primary-500 focus:border-primary-500 outline-none transition-shadow"
+              placeholder="Buscar por nombre..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
 
           {/* Project Filter */}
@@ -218,16 +226,16 @@ export const Tasks: React.FC = () => {
                     </div>
                     </td>
                     <td className="px-6 py-4 hidden sm:table-cell">
-                    <div className="flex items-center text-sm text-gray-600">
-                        <Clock size={14} className="mr-1 text-gray-400" />
-                        <span>{task.horas_reales || 0} / {task.horas_estimadas} h</span>
-                    </div>
-                    {/* Mini Progress Bar */}
-                    <div className="w-20 h-1.5 bg-gray-100 rounded-full mt-1">
-                        <div 
-                        className={`h-1.5 rounded-full ${task.horas_reales > task.horas_estimadas ? 'bg-red-400' : 'bg-primary-500'}`}
-                        style={{ width: `${Math.min(((task.horas_reales || 0) / (task.horas_estimadas || 1)) * 100, 100)}%` }}
-                        ></div>
+                    <div className="w-32">
+                        <div className="flex items-center text-sm text-gray-600 mb-1">
+                            <Clock size={14} className="mr-1 text-gray-400" />
+                            <span>{task.horas_reales || 0} / {task.horas_estimadas} h</span>
+                        </div>
+                        <ProgressBar 
+                            current={task.horas_reales || 0} 
+                            max={task.horas_estimadas || 0} 
+                            showText={false}
+                        />
                     </div>
                     </td>
                     <td className="px-6 py-4 text-right text-sm font-medium">

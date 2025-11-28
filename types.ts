@@ -85,6 +85,29 @@ export interface TaskAssignment {
   role_in_task: string;
 }
 
+export interface Comment {
+    id: string;
+    task_id?: string;
+    project_id?: string;
+    user_id: string;
+    content: string;
+    is_internal: boolean;
+    created_at: string;
+    // Joins
+    usuarios?: Usuario;
+}
+
+export interface Notification {
+    id: string;
+    user_id: string;
+    title: string;
+    message: string;
+    type: 'assignment' | 'status_change' | 'comment' | 'mention' | 'info';
+    link?: string;
+    read: boolean;
+    created_at: string;
+}
+
 export interface MetricData {
   name: string;
   value: number;

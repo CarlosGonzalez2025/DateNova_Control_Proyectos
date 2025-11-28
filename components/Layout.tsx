@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   LayoutDashboard, 
   Briefcase, 
@@ -12,9 +12,11 @@ import {
   X,
   Settings,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Bell
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
+import { Notification } from '../types';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -27,6 +29,85 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children, activePage, onNavigate, userRole, userName }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  
+  // Notifications State
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const notificationRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetchNotifications();
+    setupRealtimeSubscription();
+
+    // Close notifications when clicking outside
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      supabase.channel('notifications-channel').unsubscribe();
+    };
+  }, []);
+
+  const fetchNotifications = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    
+    if (data) {
+        setNotifications(data as Notification[]);
+        setUnreadCount(data.filter((n: Notification) => !n.read).length);
+    }
+  };
+
+  const setupRealtimeSubscription = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    supabase
+      .channel('notifications-channel')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          const newNotification = payload.new as Notification;
+          setNotifications(prev => [newNotification, ...prev]);
+          setUnreadCount(prev => prev + 1);
+          // Optional: Play a sound
+        }
+      )
+      .subscribe();
+  };
+
+  const markAsRead = async (id: string) => {
+    await supabase.from('notifications').update({ read: true }).eq('id', id);
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    setUnreadCount(prev => Math.max(0, prev - 1));
+  };
+
+  const markAllAsRead = async () => {
+      const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+      if (unreadIds.length === 0) return;
+
+      await supabase.from('notifications').update({ read: true }).in('id', unreadIds);
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setUnreadCount(0);
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -150,9 +231,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, onNavigate
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        {/* Mobile Header */}
-        <header className="lg:hidden bg-white border-b border-gray-200 h-16 flex items-center px-4 justify-between z-20">
-            <div className="flex items-center gap-3">
+        {/* Universal Header (Mobile & Desktop for Notifications) */}
+        <header className="bg-white border-b border-gray-200 h-16 flex items-center px-4 lg:px-8 justify-between z-20 sticky top-0">
+            <div className="flex items-center gap-3 lg:hidden">
                 <button 
                     className="p-2 text-gray-600 hover:bg-gray-100 rounded-md"
                     onClick={() => setIsMobileMenuOpen(true)}
@@ -161,8 +242,72 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, onNavigate
                 </button>
                 <span className="font-bold text-gray-800">Datenova</span>
             </div>
-            <div className="text-sm font-medium text-gray-600 capitalize">
-                {activePage.replace('_', ' ')}
+            
+            <div className="flex-1 hidden lg:block">
+                 <h2 className="text-lg font-semibold text-gray-800 capitalize">{activePage.replace('_', ' ')}</h2>
+            </div>
+
+            <div className="flex items-center gap-4" ref={notificationRef}>
+                {/* Notification Bell */}
+                <div className="relative">
+                    <button 
+                        className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors relative"
+                        onClick={() => setShowNotifications(!showNotifications)}
+                    >
+                        <Bell size={20} />
+                        {unreadCount > 0 && (
+                            <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+                        )}
+                    </button>
+
+                    {/* Notification Dropdown */}
+                    {showNotifications && (
+                        <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden">
+                            <div className="p-3 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                                <h3 className="text-sm font-semibold text-gray-700">Notificaciones</h3>
+                                {unreadCount > 0 && (
+                                    <button 
+                                        onClick={markAllAsRead} 
+                                        className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                                    >
+                                        Marcar leídas
+                                    </button>
+                                )}
+                            </div>
+                            <div className="max-h-80 overflow-y-auto">
+                                {notifications.length > 0 ? (
+                                    notifications.map((notif) => (
+                                        <div 
+                                            key={notif.id} 
+                                            className={`p-3 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer ${!notif.read ? 'bg-indigo-50/50' : ''}`}
+                                            onClick={() => {
+                                                markAsRead(notif.id);
+                                                if (notif.link) onNavigate(notif.link.replace('/', ''));
+                                            }}
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <div className={`mt-1 h-2 w-2 rounded-full shrink-0 ${!notif.read ? 'bg-indigo-500' : 'bg-transparent'}`}></div>
+                                                <div>
+                                                    <p className={`text-sm ${!notif.read ? 'font-semibold text-gray-900' : 'font-medium text-gray-600'}`}>
+                                                        {notif.title}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">{notif.message}</p>
+                                                    <p className="text-[10px] text-gray-400 mt-1">
+                                                        {new Date(notif.created_at).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="p-8 text-center text-gray-400 text-sm">
+                                        No tienes notificaciones
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </header>
 
