@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { Empresa } from '../types';
-import { Button, Input, Modal, Card } from '../components/UI';
+import { Button, Input, Modal, Card, ConfirmationModal } from '../components/UI';
 import { Plus, Edit2, Trash2, Search, Building2, MapPin, Phone, Mail, X } from 'lucide-react';
 
 export const Companies: React.FC = () => {
@@ -10,6 +10,10 @@ export const Companies: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Empresa | null>(null);
+
+  // Delete Modal State
+  const [companyToDelete, setCompanyToDelete] = useState<string | null>(null);
+  const [isDeleteLoading, setIsDeleteLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     nombre: '',
@@ -52,10 +56,21 @@ export const Companies: React.FC = () => {
     fetchData();
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('¿Eliminar empresa? Esto podría afectar proyectos asociados.')) {
-      await supabase.from('empresas').delete().eq('id', id);
-      fetchData();
+  const handleDelete = (id: string) => {
+    setCompanyToDelete(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!companyToDelete) return;
+    setIsDeleteLoading(true);
+    try {
+      await supabase.from('empresas').delete().eq('id', companyToDelete);
+      await fetchData();
+    } catch (error) {
+      console.error('Error deleting company:', error);
+    } finally {
+      setIsDeleteLoading(false);
+      setCompanyToDelete(null);
     }
   };
 
@@ -174,6 +189,7 @@ export const Companies: React.FC = () => {
         </div>
       )}
 
+      {/* Edit/Create Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingCompany ? 'Editar Empresa' : 'Nueva Empresa'}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input 
@@ -213,6 +229,17 @@ export const Companies: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal 
+        isOpen={!!companyToDelete}
+        onClose={() => setCompanyToDelete(null)}
+        onConfirm={confirmDelete}
+        title="Eliminar Empresa"
+        message="¿Estás seguro? Esta acción podría afectar a todos los proyectos y usuarios vinculados a esta empresa."
+        confirmText="Eliminar"
+        isLoading={isDeleteLoading}
+      />
     </div>
   );
 };

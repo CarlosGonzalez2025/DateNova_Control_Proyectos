@@ -128,6 +128,34 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
   );
 };
 
+// --- ConfirmationModal ---
+interface ConfirmationModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  isLoading?: boolean;
+}
+
+export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ 
+  isOpen, onClose, onConfirm, title, message, confirmText = 'Eliminar', cancelText = 'Cancelar', isLoading 
+}) => {
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={title}>
+      <div className="mt-2">
+        <p className="text-sm text-gray-500">{message}</p>
+      </div>
+      <div className="pt-4 flex justify-end space-x-3">
+        <Button variant="secondary" onClick={onClose} disabled={isLoading}>{cancelText}</Button>
+        <Button variant="danger" onClick={onConfirm} isLoading={isLoading}>{confirmText}</Button>
+      </div>
+    </Modal>
+  );
+};
+
 // --- Badge ---
 export const Badge: React.FC<{ children: React.ReactNode; color?: 'green' | 'blue' | 'yellow' | 'red' | 'gray' }> = ({ children, color = 'gray' }) => {
   const colors = {

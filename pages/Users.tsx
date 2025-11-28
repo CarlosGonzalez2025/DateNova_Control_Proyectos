@@ -1,8 +1,7 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { Usuario, Empresa, Invitation } from '../types';
-import { Button, Input, Select, Modal, Badge } from '../components/UI';
+import { Button, Input, Select, Modal, Badge, ConfirmationModal } from '../components/UI';
 import { Edit2, UserPlus, Mail, Trash2, Send } from 'lucide-react';
 
 export const Users: React.FC = () => {
@@ -16,6 +15,10 @@ export const Users: React.FC = () => {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<Usuario | null>(null);
   
+  // Delete Modal State
+  const [itemToDelete, setItemToDelete] = useState<{ type: 'user' | 'invitation', id: string } | null>(null);
+  const [isDeleteLoading, setIsDeleteLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     nombre: '',
     rol: 'asesor',
@@ -101,16 +104,50 @@ export const Users: React.FC = () => {
     }
   };
 
-  const deleteInvitation = async (id: string) => {
-    if(!window.confirm('¿Cancelar esta invitación?')) return;
-    await supabase.from('invitations').delete().eq('id', id);
-    fetchData();
+  const handleDeleteInvitation = (id: string) => {
+    setItemToDelete({ type: 'invitation', id });
+  };
+
+  const handleDeleteUser = (id: string) => {
+    setItemToDelete({ type: 'user', id });
+  };
+
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
+    setIsDeleteLoading(true);
+    
+    try {
+      if (itemToDelete.type === 'invitation') {
+        await supabase.from('invitations').delete().eq('id', itemToDelete.id);
+      } else if (itemToDelete.type === 'user') {
+        // Warning: Deleting from public.usuarios does NOT delete from auth.users.
+        // In a real app with backend, we would call Admin API.
+        // Here we just delete the profile, which effectively removes them from the app UI.
+        await supabase.from('usuarios').delete().eq('id', itemToDelete.id);
+      }
+      await fetchData();
+    } catch (error: any) {
+      console.error('Error deleting:', error);
+      alert('Error al eliminar: ' + error.message);
+    } finally {
+      setIsDeleteLoading(false);
+      setItemToDelete(null);
+    }
   };
 
   const sendInvitationEmail = (email: string, role: string) => {
     const subject = "Invitación a colaborar en Datenova";
     const body = `Hola,\n\nTe hemos invitado a unirte al equipo de Datenova con el rol de ${role.toUpperCase()}.\n\nPara activar tu cuenta, por favor regístrate usando este correo electrónico (${email}) en el siguiente enlace:\n\n${window.location.origin}\n\n¡Bienvenido!`;
     
+    // Prompt the user to copy link if mailto fails or for testing
+    const link = window.location.origin;
+    const msg = `Enlace de registro para enviar a ${email}:\n${link}`;
+    // We use a prompt so user can copy it manually if needed
+    if(!window.confirm(`Se abrirá tu cliente de correo.\n\nSi prefieres copiar el enlace manualmente, cancela y usa este:\n${link}\n\n¿Abrir correo?`)) {
+       prompt("Copia este enlace y envíalo al usuario:", link);
+       return; 
+    }
+
     window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
@@ -191,12 +228,21 @@ export const Users: React.FC = () => {
                   </div>
                 </td>
                 <td className="px-6 py-4 text-right text-sm font-medium">
-                  <button 
-                    onClick={() => openModal(user)} 
-                    className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-2 rounded-full hover:bg-indigo-100 transition-colors"
-                  >
-                    <Edit2 size={16} />
-                  </button>
+                  <div className="flex justify-end gap-2">
+                    <button 
+                        onClick={() => openModal(user)} 
+                        className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-2 rounded-full hover:bg-indigo-100 transition-colors"
+                    >
+                        <Edit2 size={16} />
+                    </button>
+                    <button 
+                        onClick={() => handleDeleteUser(user.id)} 
+                        className="text-red-600 hover:text-red-900 bg-red-50 p-2 rounded-full hover:bg-red-100 transition-colors"
+                        title="Eliminar usuario"
+                    >
+                        <Trash2 size={16} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -233,7 +279,7 @@ export const Users: React.FC = () => {
                                             <Send size={16} />
                                         </button>
                                         <button 
-                                            onClick={() => deleteInvitation(inv.id)} 
+                                            onClick={() => handleDeleteInvitation(inv.id)} 
                                             className="text-red-500 hover:text-red-700 p-1.5 bg-red-50 rounded-md transition-colors"
                                             title="Eliminar invitación"
                                         >
@@ -337,17 +383,6 @@ export const Users: React.FC = () => {
             onChange={e => setInviteData({...inviteData, rol: e.target.value})}
           />
 
-          {/* Selector de empresa solo visible si NO es cliente (o si lo fuera, según reglas de negocio, 
-              pero la captura pedía quitarlo para cliente. Para otros roles como asesor, podría ser útil si es externo,
-              pero generalmente staff interno no tiene empresa_id) 
-              
-              AJUSTE: Mostramos selector solo si NO es cliente, o lo ocultamos según la lógica previa.
-              La captura pedía "quitar Asignar Empresa cuando se cree un cliente".
-              Dejaré la lógica: Si es cliente -> No mostrar selector (se asume que el cliente CREA la empresa o se asigna después).
-              Si es staff -> No mostrar selector.
-              Simplificación: Lo ocultamos para todos en el invite por ahora salvo que sea estrictamente necesario.
-          */}
-          
           {(inviteData.rol !== 'cliente') && (
                <Select
                 label="Asignar a Empresa (Opcional)"
@@ -386,6 +421,19 @@ export const Users: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal 
+        isOpen={!!itemToDelete}
+        onClose={() => setItemToDelete(null)}
+        onConfirm={confirmDelete}
+        title={itemToDelete?.type === 'user' ? 'Eliminar Usuario' : 'Cancelar Invitación'}
+        message={itemToDelete?.type === 'user' 
+            ? '¿Estás seguro de eliminar este usuario? Perderá acceso inmediato al sistema.' 
+            : '¿Deseas cancelar esta invitación pendiente?'}
+        confirmText={itemToDelete?.type === 'user' ? 'Eliminar Usuario' : 'Cancelar Invitación'}
+        isLoading={isDeleteLoading}
+      />
     </div>
   );
 };

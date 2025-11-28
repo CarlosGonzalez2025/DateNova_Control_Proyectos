@@ -1,8 +1,7 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { Proyecto, Empresa } from '../types';
-import { Button, Input, Select, Modal, Card, Badge } from '../components/UI';
+import { Button, Input, Select, Modal, Card, Badge, ConfirmationModal } from '../components/UI';
 import { Plus, Edit2, Trash2, Calendar, Filter } from 'lucide-react';
 
 export const Projects: React.FC = () => {
@@ -11,6 +10,10 @@ export const Projects: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Proyecto | null>(null);
+  
+  // Delete Modal State
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
+  const [isDeleteLoading, setIsDeleteLoading] = useState(false);
   
   // Filter State
   const [filterStatus, setFilterStatus] = useState('');
@@ -62,10 +65,21 @@ export const Projects: React.FC = () => {
     fetchData();
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('¿Estás seguro de eliminar este proyecto?')) {
-      await supabase.from('proyectos').delete().eq('id', id);
-      fetchData();
+  const handleDelete = (id: string) => {
+    setProjectToDelete(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!projectToDelete) return;
+    setIsDeleteLoading(true);
+    try {
+      await supabase.from('proyectos').delete().eq('id', projectToDelete);
+      await fetchData();
+    } catch (error) {
+      console.error('Error deleting project:', error);
+    } finally {
+      setIsDeleteLoading(false);
+      setProjectToDelete(null);
     }
   };
 
@@ -187,6 +201,7 @@ export const Projects: React.FC = () => {
         </div>
       )}
 
+      {/* Edit/Create Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingProject ? 'Editar Proyecto' : 'Nuevo Proyecto'}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input 
@@ -241,6 +256,17 @@ export const Projects: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal 
+        isOpen={!!projectToDelete}
+        onClose={() => setProjectToDelete(null)}
+        onConfirm={confirmDelete}
+        title="Eliminar Proyecto"
+        message="¿Estás seguro de eliminar este proyecto? Esta acción no se puede deshacer y podría afectar a las tareas asociadas."
+        confirmText="Sí, eliminar"
+        isLoading={isDeleteLoading}
+      />
     </div>
   );
 };
