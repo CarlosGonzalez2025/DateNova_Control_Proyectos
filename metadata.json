@@ -1,0 +1,5 @@
+{
+  "name": "Datenova - Control de Proyectos",
+  "description": "Sistema integral de gestión de proyectos, tareas, clientes y registro de horas construido con React, TypeScript y Supabase.",
+  "requestFramePermissions": []
+}
