@@ -203,10 +203,10 @@ export const Users: React.FC = () => {
                 <td className="px-6 py-4">
                     <Badge color={
                         user.rol === 'superadmin' ? 'red' : 
-                        user.rol === 'desarrollador' ? 'blue' : 
-                        user.rol === 'cliente' ? 'green' : 'gray'
+                        user.rol === 'desarrollador' || user.rol === 'apoyo' ? 'blue' : 
+                        user.rol === 'cliente' ? 'green' : 'yellow'
                     }>
-                        {user.rol.toUpperCase()}
+                        {user.rol === 'apoyo' ? 'ASESOR TÉCNICO' : user.rol.toUpperCase()}
                     </Badge>
                 </td>
                 <td className="px-6 py-4 hidden md:table-cell">
@@ -268,7 +268,7 @@ export const Users: React.FC = () => {
                         {invitations.map(inv => (
                             <tr key={inv.id}>
                                 <td className="px-6 py-4 text-sm text-gray-900">{inv.email}</td>
-                                <td className="px-6 py-4 text-sm text-gray-500 capitalize">{inv.rol}</td>
+                                <td className="px-6 py-4 text-sm text-gray-500 capitalize">{inv.rol === 'apoyo' ? 'Asesor Técnico' : inv.rol}</td>
                                 <td className="px-6 py-4 text-right">
                                     <div className="flex justify-end gap-2">
                                         <button 
@@ -309,6 +309,7 @@ export const Users: React.FC = () => {
             options={[
               { value: 'cliente', label: 'Cliente (Acceso Externo)' },
               { value: 'asesor', label: 'Asesor (Project Manager)' },
+              { value: 'apoyo', label: 'Asesor Técnico (Apoyo)' },
               { value: 'desarrollador', label: 'Desarrollador (Técnico)' },
               { value: 'superadmin', label: 'Super Admin (Dueño)' },
             ]}
@@ -375,7 +376,8 @@ export const Users: React.FC = () => {
             label="Rol Asignado"
             options={[
               { value: 'cliente', label: 'Cliente' },
-              { value: 'asesor', label: 'Asesor' },
+              { value: 'asesor', label: 'Asesor (Project Manager)' },
+              { value: 'apoyo', label: 'Asesor Técnico (Apoyo)' },
               { value: 'desarrollador', label: 'Desarrollador' },
               { value: 'superadmin', label: 'Super Admin' },
             ]}
@@ -392,7 +394,7 @@ export const Users: React.FC = () => {
               />
           )}
 
-          {(inviteData.rol === 'desarrollador' || inviteData.rol === 'asesor') && (
+          {(inviteData.rol === 'desarrollador' || inviteData.rol === 'asesor' || inviteData.rol === 'apoyo') && (
             <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
                 <div>
                     <Input 
