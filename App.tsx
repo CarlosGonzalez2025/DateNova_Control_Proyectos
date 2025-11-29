@@ -8,7 +8,7 @@ import { TimeTracking } from './pages/TimeTracking';
 import { Users } from './pages/Users';
 import { Companies } from './pages/Companies';
 import { Auth } from './pages/Auth';
-import { Card } from './components/UI';
+import { ToastContainer } from './components/Toast';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
@@ -73,14 +73,17 @@ const App: React.FC = () => {
   };
 
   return (
-    <Layout 
-      activePage={currentPage} 
-      onNavigate={setCurrentPage}
-      userName={session.user.email}
-      userRole={userRole} 
-    >
-      {renderPage()}
-    </Layout>
+    <>
+      <ToastContainer />
+      <Layout
+        activePage={currentPage}
+        onNavigate={setCurrentPage}
+        userName={session.user.email}
+        userRole={userRole}
+      >
+        {renderPage()}
+      </Layout>
+    </>
   );
 };
 
