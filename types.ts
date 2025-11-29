@@ -29,8 +29,15 @@ export interface Invitation {
   empresa_id: string | null;
   tarifa_hora?: number;
   billable_rate?: number;
-  status: 'pending' | 'accepted';
+  status: 'pending' | 'sent' | 'accepted' | 'cancelled' | 'expired';
+  user_id?: string;
+  invited_by?: string;
+  invited_at?: string;
+  sent_at?: string;
+  accepted_at?: string;
+  expires_at?: string;
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface Proyecto {
