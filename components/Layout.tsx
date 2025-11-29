@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  LayoutDashboard, 
-  Briefcase, 
-  CheckSquare, 
-  Building2, 
-  Users, 
-  Clock, 
+import {
+  LayoutDashboard,
+  Briefcase,
+  CheckSquare,
+  Building2,
+  Users,
+  Clock,
+  Package,
   LogOut,
   Menu,
   X,
@@ -119,6 +120,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, onNavigate
     { id: 'proyectos', label: 'Proyectos', icon: Briefcase },
     { id: 'tareas', label: 'Órdenes', icon: CheckSquare },
     { id: 'registro_horas', label: 'Tiempos', icon: Clock },
+    { id: 'entregables', label: 'Entregables', icon: Package },
   ];
 
   if (userRole === 'superadmin' || userRole === 'asesor') {
