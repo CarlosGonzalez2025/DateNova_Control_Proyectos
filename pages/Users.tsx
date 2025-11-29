@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
+import { InvitationService } from '../services/invitations';
 import { Usuario, Empresa, Invitation } from '../types';
 import { Button, Input, Select, Modal, Badge, ConfirmationModal } from '../components/UI';
-import { Edit2, UserPlus, Mail, Trash2, Send } from 'lucide-react';
+import { Edit2, UserPlus, Mail, Trash2, Send, RefreshCw } from 'lucide-react';
 
 export const Users: React.FC = () => {
   const [users, setUsers] = useState<Usuario[]>([]);
@@ -43,11 +44,11 @@ export const Users: React.FC = () => {
     setLoading(true);
     const { data: userData } = await supabase.from('usuarios').select('*, empresas(nombre)').order('created_at', { ascending: false });
     const { data: compData } = await supabase.from('empresas').select('*');
-    const { data: invData } = await supabase.from('invitations').select('*').eq('status', 'pending');
+    const invitationsData = await InvitationService.getPendingInvitations();
 
     if (userData) setUsers(userData as Usuario[]);
     if (compData) setCompanies(compData as Empresa[]);
-    if (invData) setInvitations(invData as Invitation[]);
+    setInvitations(invitationsData as Invitation[]);
     setLoading(false);
   };
 
@@ -82,23 +83,21 @@ export const Users: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const { error } = await supabase.from('invitations').insert([{
+      const result = await InvitationService.inviteUser({
         email: inviteData.email,
         rol: inviteData.rol,
-        empresa_id: inviteData.empresa_id || null,
+        empresa_id: inviteData.empresa_id || undefined,
         tarifa_hora: inviteData.tarifa_hora,
-        billable_rate: inviteData.billable_rate,
-        status: 'pending'
-      }]);
+        billable_rate: inviteData.billable_rate
+      });
 
-      if (error) throw error;
-      
-      alert('Invitación creada exitosamente.\n\nIMPORTANTE: Ahora debes enviar el correo al usuario haciendo clic en el botón "Enviar" en la lista de invitaciones.');
-      setIsInviteModalOpen(false);
-      setInviteData({ email: '', rol: 'asesor', empresa_id: '', tarifa_hora: 0, billable_rate: 0 });
-      fetchData();
+      if (result.success) {
+        setIsInviteModalOpen(false);
+        setInviteData({ email: '', rol: 'asesor', empresa_id: '', tarifa_hora: 0, billable_rate: 0 });
+        fetchData();
+      }
     } catch (err: any) {
-      alert('Error al invitar: ' + err.message);
+      console.error('Error inviting:', err);
     } finally {
       setLoading(false);
     }
@@ -135,20 +134,18 @@ export const Users: React.FC = () => {
     }
   };
 
-  const sendInvitationEmail = (email: string, role: string) => {
-    const subject = "Invitación a colaborar en Datenova";
-    const body = `Hola,\n\nTe hemos invitado a unirte al equipo de Datenova con el rol de ${role.toUpperCase()}.\n\nPara activar tu cuenta, por favor regístrate usando este correo electrónico (${email}) en el siguiente enlace:\n\n${window.location.origin}\n\n¡Bienvenido!`;
-    
-    // Prompt the user to copy link if mailto fails or for testing
-    const link = window.location.origin;
-    const msg = `Enlace de registro para enviar a ${email}:\n${link}`;
-    // We use a prompt so user can copy it manually if needed
-    if(!window.confirm(`Se abrirá tu cliente de correo.\n\nSi prefieres copiar el enlace manualmente, cancela y usa este:\n${link}\n\n¿Abrir correo?`)) {
-       prompt("Copia este enlace y envíalo al usuario:", link);
-       return; 
+  const resendInvitation = async (invitationId: string, email: string) => {
+    setLoading(true);
+    try {
+      const result = await InvitationService.resendInvitation(invitationId);
+      if (result.success) {
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Error resending invitation:', error);
+    } finally {
+      setLoading(false);
     }
-
-    window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
   const openModal = (user: Usuario) => {
@@ -267,21 +264,44 @@ export const Users: React.FC = () => {
                     <tbody className="bg-white divide-y divide-gray-200">
                         {invitations.map(inv => (
                             <tr key={inv.id}>
-                                <td className="px-6 py-4 text-sm text-gray-900">{inv.email}</td>
-                                <td className="px-6 py-4 text-sm text-gray-500 capitalize">{inv.rol === 'apoyo' ? 'Asesor Técnico' : inv.rol}</td>
+                                <td className="px-6 py-4">
+                                    <div className="text-sm text-gray-900">{inv.email}</div>
+                                    {inv.sent_at && (
+                                        <div className="text-xs text-gray-500 mt-1">
+                                            Email enviado: {new Date(inv.sent_at).toLocaleString()}
+                                        </div>
+                                    )}
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-sm text-gray-700 capitalize">
+                                            {inv.rol === 'apoyo' ? 'Asesor Técnico' : inv.rol}
+                                        </span>
+                                        <Badge color={
+                                            inv.status === 'sent' ? 'blue' :
+                                            inv.status === 'pending' ? 'yellow' :
+                                            inv.status === 'accepted' ? 'green' : 'gray'
+                                        }>
+                                            {inv.status === 'sent' ? 'Email Enviado' :
+                                             inv.status === 'pending' ? 'Pendiente' :
+                                             inv.status === 'accepted' ? 'Aceptada' : inv.status}
+                                        </Badge>
+                                    </div>
+                                </td>
                                 <td className="px-6 py-4 text-right">
                                     <div className="flex justify-end gap-2">
-                                        <button 
-                                            onClick={() => sendInvitationEmail(inv.email, inv.rol)} 
+                                        <button
+                                            onClick={() => resendInvitation(inv.id, inv.email)}
                                             className="text-blue-600 hover:text-blue-800 p-1.5 bg-blue-50 rounded-md transition-colors"
-                                            title="Enviar email de invitación"
+                                            title="Reenviar invitación"
+                                            disabled={loading}
                                         >
-                                            <Send size={16} />
+                                            <RefreshCw size={16} />
                                         </button>
-                                        <button 
-                                            onClick={() => handleDeleteInvitation(inv.id)} 
+                                        <button
+                                            onClick={() => handleDeleteInvitation(inv.id)}
                                             className="text-red-500 hover:text-red-700 p-1.5 bg-red-50 rounded-md transition-colors"
-                                            title="Eliminar invitación"
+                                            title="Cancelar invitación"
                                         >
                                             <Trash2 size={16} />
                                         </button>

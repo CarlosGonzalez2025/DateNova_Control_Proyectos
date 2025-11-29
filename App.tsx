@@ -9,6 +9,7 @@ import { Users } from './pages/Users';
 import { Companies } from './pages/Companies';
 import { Deliverables } from './pages/Deliverables';
 import { Auth } from './pages/Auth';
+import { ActivateAccount } from './pages/ActivateAccount';
 import { ToastContainer } from './components/Toast';
 
 const App: React.FC = () => {
@@ -16,6 +17,7 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string>('');
+  const [needsActivation, setNeedsActivation] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession()
@@ -41,8 +43,17 @@ const App: React.FC = () => {
   }, []);
 
   const fetchUserRole = async (uid: string) => {
-      const { data } = await supabase.from('usuarios').select('rol').eq('id', uid).single();
+      const { data, error } = await supabase.from('usuarios').select('rol, nombre').eq('id', uid).single();
+
+      // Si no existe el perfil en usuarios, significa que necesita activar su cuenta
+      if (error || !data) {
+        setNeedsActivation(true);
+        setLoading(false);
+        return;
+      }
+
       setUserRole(data?.rol || 'cliente');
+      setNeedsActivation(false);
       setLoading(false);
   };
 
@@ -52,6 +63,15 @@ const App: React.FC = () => {
 
   if (!session) {
     return <Auth />;
+  }
+
+  if (needsActivation) {
+    return (
+      <>
+        <ToastContainer />
+        <ActivateAccount />
+      </>
+    );
   }
 
   const renderPage = () => {
