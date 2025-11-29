@@ -1,19 +1,14 @@
 
 import React, { useState } from 'react';
-import { supabase, updateSupabaseClient, checkSupabaseConfig } from '../services/supabase';
-import { Button, Input } from '../components/UI';
-import { CheckCircle2, ArrowRight, LayoutDashboard, ShieldCheck, Zap } from 'lucide-react';
+import { supabase } from '../services/supabase';
+import { Button } from '../components/UI';
+import { ArrowRight, LayoutDashboard, ShieldCheck, Zap } from 'lucide-react';
 
 export const Auth: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
-  
-  // Setup state for demo purposes if env vars are missing
-  const [needsSetup, setNeedsSetup] = useState(!checkSupabaseConfig());
-  const [setupUrl, setSetupUrl] = useState('');
-  const [setupKey, setSetupKey] = useState('');
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,35 +28,6 @@ export const Auth: React.FC = () => {
       setLoading(false);
     }
   };
-
-  const handleSetup = (e: React.FormEvent) => {
-    e.preventDefault();
-    if(setupUrl && setupKey) {
-        updateSupabaseClient(setupUrl, setupKey);
-        setNeedsSetup(false);
-    }
-  };
-
-  // --- VISTA DE CONFIGURACIÓN (Solo si faltan credenciales) ---
-  if (needsSetup) {
-    return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 font-sans">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden p-8 border border-gray-100">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-slate-900">Configuración Inicial</h2>
-            <p className="mt-2 text-sm text-gray-500">
-             Ingresa tus credenciales de Supabase para conectar la demo.
-            </p>
-          </div>
-          <form onSubmit={handleSetup} className="space-y-5">
-            <Input label="Supabase URL" value={setupUrl} onChange={e => setSetupUrl(e.target.value)} placeholder="https://xyz.supabase.co" required />
-            <Input label="Supabase Anon Key" value={setupKey} onChange={e => setSetupKey(e.target.value)} type="password" required />
-            <Button type="submit" className="w-full h-11 text-base">Conectar Sistema</Button>
-          </form>
-        </div>
-      </div>
-    )
-  }
 
   // --- VISTA PRINCIPAL (LOGIN / REGISTRO) ---
   return (

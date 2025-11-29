@@ -7,8 +7,9 @@ import { Tasks } from './pages/Tasks';
 import { TimeTracking } from './pages/TimeTracking';
 import { Users } from './pages/Users';
 import { Companies } from './pages/Companies';
+import { Deliverables } from './pages/Deliverables';
 import { Auth } from './pages/Auth';
-import { Card } from './components/UI';
+import { ToastContainer } from './components/Toast';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
@@ -63,6 +64,8 @@ const App: React.FC = () => {
         return <Tasks />;
       case 'registro_horas':
         return <TimeTracking currentUserId={session.user.id} />;
+      case 'entregables':
+        return <Deliverables />;
       case 'empresas':
         return <Companies />;
       case 'usuarios':
@@ -73,14 +76,17 @@ const App: React.FC = () => {
   };
 
   return (
-    <Layout 
-      activePage={currentPage} 
-      onNavigate={setCurrentPage}
-      userName={session.user.email}
-      userRole={userRole} 
-    >
-      {renderPage()}
-    </Layout>
+    <>
+      <ToastContainer />
+      <Layout
+        activePage={currentPage}
+        onNavigate={setCurrentPage}
+        userName={session.user.email}
+        userRole={userRole}
+      >
+        {renderPage()}
+      </Layout>
+    </>
   );
 };
 
