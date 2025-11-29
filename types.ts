@@ -97,6 +97,22 @@ export interface Comment {
     usuarios?: Usuario;
 }
 
+// Nuevo interface mejorado para comentarios (migrar de Comment a TaskComment)
+export interface TaskComment {
+  id: string;
+  tarea_id: string | null;
+  proyecto_id: string | null;
+  usuario_id: string | null;
+  mensaje: string;
+  parent_comment_id: string | null;
+  es_interno: boolean;
+  created_at: string;
+  updated_at: string;
+  // Joins
+  usuarios?: Usuario;
+  replies?: TaskComment[];
+}
+
 export interface Notification {
     id: string;
     user_id: string;
@@ -111,4 +127,65 @@ export interface Notification {
 export interface MetricData {
   name: string;
   value: number;
+}
+
+export interface Deliverable {
+  id: string;
+  tarea_id: string;
+  nombre: string;
+  descripcion: string | null;
+  tipo_entregable: 'Documento' | 'Código' | 'Diseño' | 'Manual' | 'Otro';
+  version: string;
+  archivo_url: string | null;
+  archivo_nombre: string | null;
+  archivo_tamano: number | null;
+  estado: 'Pendiente' | 'En Revisión' | 'Aprobado' | 'Rechazado' | 'En Corrección';
+  fecha_entrega: string | null;
+  fecha_aprobacion: string | null;
+  comentarios_cliente: string | null;
+  aprobado_por: string | null;
+  creado_por: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joins
+  tareas?: Tarea;
+  aprobador?: Usuario;
+  creador?: Usuario;
+  versions?: DeliverableVersion[];
+}
+
+export interface DeliverableVersion {
+  id: string;
+  deliverable_id: string;
+  version: string;
+  archivo_url: string;
+  archivo_nombre: string | null;
+  archivo_tamano: number | null;
+  notas_version: string | null;
+  subido_por: string | null;
+  created_at: string;
+  // Joins
+  usuarios?: Usuario;
+}
+
+export interface AuditLog {
+  id: string;
+  usuario_id: string | null;
+  accion: 'CREATE' | 'UPDATE' | 'DELETE' | 'VIEW' | 'LOGIN' | 'LOGOUT';
+  tabla: string;
+  registro_id: string | null;
+  cambios: Record<string, any> | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  created_at: string;
+  // Joins
+  usuarios?: Usuario;
+}
+
+export interface ClientMetrics {
+  activeProjects: number;
+  pendingTasks: number;
+  completedTasksMonth: number;
+  totalHoursMonth: number;
+  overallProgress: number;
 }
