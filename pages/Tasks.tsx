@@ -55,12 +55,12 @@ export const Tasks: React.FC = () => {
       setCurrentUser(userData as Usuario);
     }
 
-    // Fetch tasks including joined data for projects, legacy responsible user, and new assignments
+    // Fetch tasks including joined data for projects (with company), legacy responsible user, and new assignments
     const { data: taskData } = await supabase
       .from('tareas')
       .select(`
         *, 
-        proyectos(nombre), 
+        proyectos(nombre, empresas(nombre)), 
         usuarios(nombre, avatar_url),
         task_assignments(
           usuarios(id, nombre, avatar_url, rol)
@@ -68,7 +68,12 @@ export const Tasks: React.FC = () => {
       `)
       .order('created_at', { ascending: false });
       
-    const { data: projData } = await supabase.from('proyectos').select('*');
+    // Fetch Projects with Company Name for the Dropdown
+    const { data: projData } = await supabase
+      .from('proyectos')
+      .select('*, empresas(nombre)')
+      .order('created_at', { ascending: false });
+      
     const { data: usrData } = await supabase.from('usuarios').select('*');
 
     if (taskData) {
@@ -80,14 +85,24 @@ export const Tasks: React.FC = () => {
       setTasks(mappedTasks as Tarea[]);
     }
     
-    if (projData) setProjects(projData as Proyecto[]);
+    if (projData) {
+        // Sort projects by Company Name, then Project Name for better UX in dropdown
+        const sortedProjects = (projData as any[]).sort((a, b) => {
+            const companyA = a.empresas?.nombre || '';
+            const companyB = b.empresas?.nombre || '';
+            if (companyA !== companyB) return companyA.localeCompare(companyB);
+            return a.nombre.localeCompare(b.nombre);
+        });
+        setProjects(sortedProjects as Proyecto[]);
+    }
+
     if (usrData) setUsers(usrData as Usuario[]);
     setLoading(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.proyecto_id) return alert('Debes seleccionar un proyecto');
+    if (!formData.proyecto_id) return alert('Debes seleccionar un proyecto/cliente');
 
     setLoading(true);
     
@@ -367,7 +382,11 @@ export const Tasks: React.FC = () => {
                 <tr key={task.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                     <div className="text-sm font-medium text-gray-900">{task.nombre}</div>
-                    <div className="text-xs text-gray-500 md:hidden">{task.proyectos?.nombre}</div>
+                    <div className="text-xs text-gray-500 md:hidden">
+                        {/* Mobile View: Show Client - Project */}
+                        {task.proyectos?.empresas?.nombre ? `${task.proyectos.empresas.nombre} • ` : ''}
+                        {task.proyectos?.nombre}
+                    </div>
                     <div className="mt-2">
                         {/* Logic to display multiple assignees or fallback to legacy single user */}
                         {(task.assignees && task.assignees.length > 0) ? (
@@ -417,7 +436,15 @@ export const Tasks: React.FC = () => {
                     </div>
                     </td>
                     <td className="px-6 py-4 hidden md:table-cell">
-                    <div className="text-sm text-gray-600 font-medium">{task.proyectos?.nombre}</div>
+                        <div className="flex flex-col">
+                            {/* @ts-ignore - Supabase join returns object even if interface optional */}
+                            {task.proyectos?.empresas?.nombre && (
+                                <span className="text-xs font-bold text-indigo-600 mb-0.5">
+                                    {task.proyectos.empresas.nombre}
+                                </span>
+                            )}
+                            <span className="text-sm text-gray-600 font-medium">{task.proyectos?.nombre}</span>
+                        </div>
                     </td>
                     <td className="px-6 py-4">
                     <div className="flex flex-col gap-1 items-start">
@@ -479,7 +506,14 @@ export const Tasks: React.FC = () => {
           />
           <Select
             label="Proyecto / Cliente"
-            options={[{value: '', label: 'Seleccionar...'}, ...projects.map(p => ({ value: p.id, label: p.nombre }))]}
+            options={[
+                {value: '', label: 'Seleccionar...'}, 
+                ...projects.map(p => ({ 
+                    value: p.id, 
+                    // Show "Client - Project" to help identify the context
+                    label: p.empresas?.nombre ? `${p.empresas.nombre} - ${p.nombre}` : p.nombre 
+                }))
+            ]}
             value={formData.proyecto_id}
             onChange={e => setFormData({...formData, proyecto_id: e.target.value})}
             required
