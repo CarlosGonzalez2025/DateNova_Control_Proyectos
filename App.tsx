@@ -1,20 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './services/supabase';
-import { Layout } from './components/Layout';
-import { Dashboard } from './pages/Dashboard';
-import { Projects } from './pages/Projects';
-import { Tasks } from './pages/Tasks';
-import { TimeTracking } from './pages/TimeTracking';
-import { Users } from './pages/Users';
-import { Companies } from './pages/Companies';
-import { Deliverables } from './pages/Deliverables';
-import { Auth } from './pages/Auth';
-import { ActivateAccount } from './pages/ActivateAccount';
 import { ToastContainer } from './components/Toast';
+import AppRouter from './components/Router';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
-  const [currentPage, setCurrentPage] = useState('dashboard');
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string>('');
   const [needsActivation, setNeedsActivation] = useState(false);
@@ -74,38 +64,16 @@ const App: React.FC = () => {
     );
   }
 
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'dashboard':
-        return <Dashboard />;
-      case 'proyectos':
-        return <Projects />;
-      case 'tareas':
-        return <Tasks />;
-      case 'registro_horas':
-        return <TimeTracking currentUserId={session.user.id} />;
-      case 'entregables':
-        return <Deliverables />;
-      case 'empresas':
-        return <Companies />;
-      case 'usuarios':
-        return <Users />;
-      default:
-        return <Dashboard />;
-    }
-  };
-
   return (
     <>
       <ToastContainer />
-      <Layout
-        activePage={currentPage}
-        onNavigate={setCurrentPage}
-        userName={session.user.email}
+      <AppRouter
+        session={session}
+        needsActivation={needsActivation}
         userRole={userRole}
-      >
-        {renderPage()}
-      </Layout>
+        loading={loading}
+        userName={session?.user?.email || ''}
+      />
     </>
   );
 };

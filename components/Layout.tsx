@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Briefcase,
@@ -21,16 +22,17 @@ import { Notification } from '../types';
 
 interface LayoutProps {
   children: React.ReactNode;
-  activePage: string;
-  onNavigate: (page: string) => void;
   userRole?: string;
   userName?: string;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, activePage, onNavigate, userRole, userName }) => {
+export const Layout: React.FC<LayoutProps> = ({ children, userRole, userName }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activePage = location.pathname.substring(1) || 'dashboard';
+
   // Notifications State
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -171,26 +173,23 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, onNavigate
         <nav className="flex-1 px-4 space-y-2 mt-6 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = activePage === item.id;
             return (
-              <button
+              <NavLink
                 key={item.id}
-                onClick={() => {
-                  onNavigate(item.id);
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`
-                  w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors
-                  ${isActive 
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50' 
-                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'}
-                  ${!sidebarOpen && 'justify-center px-2'}
-                `}
+                to={`/${item.id}`}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={({ isActive }) =>
+                  `w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors ${
+                    isActive
+                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50'
+                      : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                  } ${!sidebarOpen && 'justify-center px-2'}`
+                }
                 title={!sidebarOpen ? item.label : ''}
               >
                 <Icon size={20} className="shrink-0" />
                 {sidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
-              </button>
+              </NavLink>
             );
           })}
         </nav>
@@ -284,7 +283,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, onNavigate
                                             className={`p-3 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer ${!notif.read ? 'bg-indigo-50/50' : ''}`}
                                             onClick={() => {
                                                 markAsRead(notif.id);
-                                                if (notif.link) onNavigate(notif.link.replace('/', ''));
+                                                if (notif.link) navigate(notif.link);
                                             }}
                                         >
                                             <div className="flex items-start gap-3">
