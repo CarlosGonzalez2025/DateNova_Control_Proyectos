@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Briefcase,
@@ -21,16 +22,16 @@ import { Notification } from '../types';
 
 interface LayoutProps {
   children: React.ReactNode;
-  activePage: string;
-  onNavigate: (page: string) => void;
   userRole?: string;
   userName?: string;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, activePage, onNavigate, userRole, userName }) => {
+export const Layout: React.FC<LayoutProps> = ({ children, userRole, userName }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  
+  const location = useLocation();
+  const navigate = useNavigate();
+
   // Notifications State
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -171,18 +172,16 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, onNavigate
         <nav className="flex-1 px-4 space-y-2 mt-6 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = activePage === item.id;
+            const isActive = location.pathname.includes(item.id);
             return (
-              <button
+              <Link
                 key={item.id}
-                onClick={() => {
-                  onNavigate(item.id);
-                  setIsMobileMenuOpen(false);
-                }}
+                to={`/${item.id}`}
+                onClick={() => setIsMobileMenuOpen(false)}
                 className={`
                   w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors
-                  ${isActive 
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50' 
+                  ${isActive
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50'
                     : 'text-slate-400 hover:bg-slate-800 hover:text-white'}
                   ${!sidebarOpen && 'justify-center px-2'}
                 `}
@@ -190,7 +189,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, onNavigate
               >
                 <Icon size={20} className="shrink-0" />
                 {sidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
-              </button>
+              </Link>
             );
           })}
         </nav>
@@ -246,13 +245,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, onNavigate
             </div>
             
             <div className="flex-1 hidden lg:block">
-                 <h2 className="text-lg font-semibold text-gray-800 capitalize">{activePage.replace('_', ' ')}</h2>
+                 <h2 className="text-lg font-semibold text-gray-800 capitalize">{location.pathname.substring(1).replace('_', ' ')}</h2>
             </div>
 
             <div className="flex items-center gap-4" ref={notificationRef}>
                 {/* Notification Bell */}
                 <div className="relative">
-                    <button 
+                    <button
                         className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors relative"
                         onClick={() => setShowNotifications(!showNotifications)}
                     >
@@ -268,8 +267,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, onNavigate
                             <div className="p-3 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                                 <h3 className="text-sm font-semibold text-gray-700">Notificaciones</h3>
                                 {unreadCount > 0 && (
-                                    <button 
-                                        onClick={markAllAsRead} 
+                                    <button
+                                        onClick={markAllAsRead}
                                         className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
                                     >
                                         Marcar leídas
@@ -279,12 +278,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, onNavigate
                             <div className="max-h-80 overflow-y-auto">
                                 {notifications.length > 0 ? (
                                     notifications.map((notif) => (
-                                        <div 
-                                            key={notif.id} 
+                                        <div
+                                            key={notif.id}
                                             className={`p-3 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer ${!notif.read ? 'bg-indigo-50/50' : ''}`}
                                             onClick={() => {
                                                 markAsRead(notif.id);
-                                                if (notif.link) onNavigate(notif.link.replace('/', ''));
+                                                if (notif.link) navigate(notif.link);
                                             }}
                                         >
                                             <div className="flex items-start gap-3">
